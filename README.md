@@ -2,3 +2,9 @@ This repo describes algorithmically the Online Context Language Model (OCLM) mod
 
 The code in the repo was mainly written by Dudy and Xu.
 
+Additional requirements to run the code are:
+  * openfst
+  * compiled ebitweight
+  * compiled specilizer
+
+Or Alternatively, you can ask for the docker image as everything is found there and ready for the either train+test or just test (with the current trained model)
