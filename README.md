@@ -13,9 +13,8 @@ This repo contains additional code for operational use and a demo code to show c
 
 Here are two screen shots taken from this demo:
 
-
-![](https://github.com/shiranD/oclm/images/d1.png | width=100)
-![](images/d1.png | width=100)
+<img src="images/d1.png" width="500" >
+![](images/d1.png)
 
 
 Or Alternatively, you can ask for the docker image as everything is found there and ready for the either train+test or just test (with the current trained model)
