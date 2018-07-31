@@ -1,4 +1,6 @@
 from __future__ import division
+#import sys
+#sys.path.insert(0, "../../")
 import pywrapfst as fst
 import math
 from ebitweight import BitWeight
@@ -82,19 +84,13 @@ class oclm:
         labels = []
         syms = anfst.input_symbols()
         state = anfst.start()
-        flag = 0
         for arc in anfst.arcs(state):
             label = syms.find(arc.ilabel)
             pr = float(arc.weight)
             dist.append(BitWeight(pr)) # ebitweight gets -log(pr) only
             labels.append(label)
-            if not flag: # init sum with fist value
-                sum_value = BitWeight(pr)
-                flag = 1
-        # normalize distribution
-        for value in dist[1:]:
-            sum_value+=value # will sum in log domain (log-add)
-        norm_dist = [(prob/sum_value).loge() for prob in dist]
+        sum_value = sum(dist, BitWeight(1e6)) # will sum in log domain (log-add)
+        norm_dist = [(prob/sum_value).real() for prob in dist]
         del anfst
         # construct a norm fst
         output = fst.Fst()
@@ -327,12 +323,11 @@ class oclm:
             w = float(arc.weight)
             if len(ch) == 1:
                 priors.append((ch, w))
-
         # Sorts the prior by the probability and normalize it.
         priors = sorted(priors, key=lambda prior: prior[1])
         priors_vals = [BitWeight(prob) for _,prob in priors]
         total = sum(priors_vals, BitWeight(1e6))
-        norm_priors = [(prob / total).loge() for prob in priors_vals]
+        norm_priors = [(prob / total).real() for prob in priors_vals]
         return zip([ch for ch,_ in priors], norm_priors)
 
     def append_eeg_evidence(self, ch_dist):
@@ -348,4 +343,3 @@ class oclm:
             new_ch.add_arc(0, fst.Arc(code, code, pr, 1))
         new_ch.arcsort(sort_type="olabel")
         self.history_fst.concat(new_ch).rmepsilon()
-        #print self.history_fst
