@@ -9,4 +9,8 @@ Additional requirements to run the code are:
   * compiled [specilizer](https://github.com/shiranD/specializer)
   * optional: requests and json for python
 
+This repo contains additional code for operational use and a demo code to show case OCLM performance.
+
+Here are two screen shots taken from this demo:
+![t1](https://github.com/shiranD/oclm/images/d1.png)
 Or Alternatively, you can ask for the docker image as everything is found there and ready for the either train+test or just test (with the current trained model)
