@@ -1,6 +1,4 @@
 from __future__ import division
-#import sys
-#sys.path.insert(0, "../../")
 import pywrapfst as fst
 import math
 from ebitweight import BitWeight
