@@ -14,7 +14,7 @@ mkdir -p json_output
 datapath=../data
 out=../json_output
 ch_sym=../ch_syms.txt
-folds=0
+folds=TBD # 5
 nbest=1 # 1-3 is optimal
 
 python3 split.py --train $train_name --test $test_name --fdata $corpus --odir $datapath/ --folds $folds
