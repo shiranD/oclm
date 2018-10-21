@@ -6,7 +6,6 @@ print "READING LANGUAGE MODEL.."
 path = TBD
 lm = oclm.server(path)
 
-
 @app.route('/state_update', methods=['POST'])
 def lang_model():
     j = request.get_json()
@@ -18,6 +17,15 @@ def lang_model():
     else:
         return jsonify(letter=out[0], word=out[1])
 
+@app.route('/recent_priors', methods=['POST'])
+def recent_priors():
+    j = request.get_json()
+    return_mode = j['return_mode']
+    out = lm.priors(return_mode)
+    if return_mode == 'letter':
+        return jsonify(letter=out)
+    else:
+        return jsonify(letter=out[0], word=out[1])
 
 @app.route('/init', methods=['POST'])
 def init():

@@ -16,8 +16,7 @@ class oclm:
         self.ch_before_last_space_fst = fst.Fst.read(machines + "/ch_before_last_space.fst")
         self.length_fst = fst.Fst.read(machines + "/length_machine.sigma.fst")
         self.ltr_dist = fst.Fst.read(machines + "/ltr_dist.sigma.fst")
-        #self.ch_syms = fst.SymbolTable.read_text(machines + "/ch_syms")
-        self.ch_syms = self.spell.output_symbols()
+        self.ch_syms = fst.SymbolTable.read_text(machines + "/ch_syms")
         self.wd_syms = self.lm.input_symbols()
         self.SIGMA = self.wd_syms.find('<sigma>')
         self.factor = 0.5
@@ -34,6 +33,13 @@ class oclm:
         self.tr_ltr2wrd = fst.Fst.read(machines + "/trailing_lex.fst")
     
     def init(self):
+        '''
+        create history fst
+        '''
+
+        self.history_fst = self.create_empty_fst(self.ch_syms, self.ch_syms)
+
+    def reset(self):
         '''
         create history fst
         '''
@@ -88,7 +94,7 @@ class oclm:
             dist.append(BitWeight(pr)) # ebitweight gets -log(pr) only
             labels.append(label)
         sum_value = sum(dist, BitWeight(1e6)) # will sum in log domain (log-add)
-        norm_dist = [(prob/sum_value).real() for prob in dist]
+        norm_dist = [(prob/sum_value).loge() for prob in dist]
         del anfst
         # construct a norm fst
         output = fst.Fst()
@@ -177,9 +183,8 @@ class oclm:
             dist.append(BitWeight(pr)) # ebitweight gets -log(pr) only
             labels.append(label)
         sum_value = sum(dist, BitWeight(1e6))
-        norm_dist = [(prob/sum_value).real() for prob in dist]
-        return sorted(zip(labels, norm_dist), key=lambda x:-x[1])
-
+        norm_dist = [(prob/sum_value).loge() for prob in dist]
+        return sorted(zip(labels, norm_dist), key=lambda x:x[1])
 
     def topk_choice(self, word_sequence, topk_wds=None):
         '''
@@ -321,11 +326,12 @@ class oclm:
             w = float(arc.weight)
             if len(ch) == 1:
                 priors.append((ch, w))
+
         # Sorts the prior by the probability and normalize it.
         priors = sorted(priors, key=lambda prior: prior[1])
         priors_vals = [BitWeight(prob) for _,prob in priors]
         total = sum(priors_vals, BitWeight(1e6))
-        norm_priors = [(prob / total).real() for prob in priors_vals]
+        norm_priors = [(prob / total).loge() for prob in priors_vals]
         return zip([ch for ch,_ in priors], norm_priors)
 
     def append_eeg_evidence(self, ch_dist):
@@ -341,3 +347,86 @@ class oclm:
             new_ch.add_arc(0, fst.Arc(code, code, pr, 1))
         new_ch.arcsort(sort_type="olabel")
         self.history_fst.concat(new_ch).rmepsilon()
+
+
+    def update(self, ch_dist):
+        '''
+        Update the history with the new likelihood array in the correct scale
+        (nagative log space) to the history.
+        '''
+        new_ch = fst.Fst()
+        new_ch.set_input_symbols(self.ch_syms)
+        new_ch.set_output_symbols(self.ch_syms)
+        new_ch.add_state()
+        new_ch.set_start(0)
+        new_ch.add_state()
+        new_ch.set_final(1)
+        space_code = -1
+        space_pr = 0.
+        for ch, pr in ch_dist:
+            code = self.ch_syms.find(ch)
+            if ch == '#':  # Adds space after we finish updating trailing chars.
+                space_code = code
+                space_pr = pr
+                continue
+            new_ch.add_arc(0, fst.Arc(code, code, pr, 1))
+        new_ch.arcsort(sort_type="olabel")
+
+        # Adds the trailing characters to existing binned history.
+        for words_bin in self.prefix_words:
+            if words_bin[2] >= 10:  # We discard the whole trail in this case (TODO)
+                continue
+            # Unless we are testing a straight line machine, this normally
+            # doesn't happen in practice.
+            if new_ch.num_arcs(0) == 0:
+                continue
+            words_bin[1].concat(new_ch).rmepsilon()
+            words_bin[2] += 1
+
+        # Continues updating the history and adds back the space if necessary.
+        if space_code >= 0:
+            new_ch.add_arc(0, fst.Arc(space_code, space_code, space_pr, 1))
+        self.history_fst.concat(new_ch).rmepsilon()
+
+        # Respectively update the binned history
+        if space_code >= 0:  # If there is a space
+            # Finishes the prefix words in current position
+            word_lattice = fst.compose(self.history_fst, self.ltr2wrd)
+            word_lattice.project(project_output=True).rmepsilon()
+            word_lattice = fst.determinize(word_lattice)
+            word_lattice.minimize()
+            if word_lattice.num_states() == 0:
+                word_lattice = self.create_empty_fst(self.wd_syms, self.wd_syms)
+            trailing_chars = self.create_empty_fst(self.ch_syms, self.ch_syms)
+            self.prefix_words.append([word_lattice, trailing_chars, 0])
+
+    def predict(self, top_k_wds=[]):
+        top_k = None
+        trailing_chars = None
+        for wd_lattice, tr_chars, nchars in self.prefix_words:
+            wd_lattice_cp = wd_lattice.copy()
+            if nchars >= 10: continue  # (TODO)
+            if tr_chars.num_states() == 1:
+                # Add sigma if we want to start a new word
+                word_seq = self.add_sigma(wd_lattice_cp)
+            else:
+                tr_sigma = self.add_char_selfloop(tr_chars, self.ch_syms)
+                tr_sigma.arcsort(sort_type="olabel")
+                tr_wds = fst.compose(tr_sigma, self.ltr2wrd)
+                tr_wds.project(project_output=True).rmepsilon()
+                # If we can't even find candidates for current trailing chars,
+                # skip this bin.
+                if tr_wds.num_states() == 0:
+                    continue
+                word_seq = wd_lattice_cp.concat(tr_wds).rmepsilon()
+            if not top_k:
+                top_k = self.topk_choice(word_seq)
+            else:
+                top_k.union(self.topk_choice(word_seq))
+            if not trailing_chars:
+                trailing_chars = tr_chars
+            else:
+                trailing_chars.union(tr_chars)
+        united_LM = self.combine_ch_lm(top_k, top_k_wds)
+        priors = self.next_char_dist(trailing_chars, united_LM)
+        return priors
