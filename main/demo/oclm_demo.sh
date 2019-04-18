@@ -17,5 +17,5 @@ fold=1
 machines=TBD
 # rm logger if found
 export LD_LIBRARY_PATH=/usr/local/lib/fst
-python ../../demo.py --test ${datapath}/${fold}${tst} --eeg eeg_data/EEGEvidence.txt-high --nbest $nbest --machines ${machines}
+python demo.py --test ${datapath}/${fold}${tst} --eeg eeg_data/EEGEvidence.txt-high --nbest $nbest --machines ${machines}
 
