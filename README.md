@@ -1,5 +1,20 @@
 This repo describes algorithmically the Online Context Language Model (OCLM) model. The paper [A Multi-Context Character Prediction Model for a Brain-Computer Interface](http://aclweb.org/anthology/W18-1210) written by Dudy, Xu, Bedrick, and Smith provides further details to the priciples and motivation for this project in addition to a proof of concept.
 
+```
+@inproceedings{dudy-etal-2018-multi,
+    title = "A Multi-Context Character Prediction Model for a Brain-Computer Interface",
+    author = "Dudy, Shiran and Xu, Shaobin and Bedrick, Steven and Smith, David",
+    booktitle = "Proceedings of the Second Workshop on Subword/Character {LE}vel Models",
+    month = jun,
+    year = "2018",
+    address = "New Orleans",
+    publisher = "Association for Computational Linguistics",
+    url = "https://www.aclweb.org/anthology/W18-1210",
+    doi = "10.18653/v1/W18-1210",
+    pages = "72--77",
+}
+```
+
 The code in the repo was mainly written by Dudy and Xu.
 
 Additional requirements to run the code are:
