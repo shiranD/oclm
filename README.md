@@ -11,7 +11,7 @@ This repo describes algorithmically the Online Context Language Model (OCLM) mod
     publisher = "Association for Computational Linguistics",
     url = "https://www.aclweb.org/anthology/W18-1210",
     doi = "10.18653/v1/W18-1210",
-    pages = "72--77",
+    pages = "72--77"
 }
 ```
 
